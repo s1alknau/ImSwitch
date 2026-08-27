@@ -19,6 +19,11 @@ except ImportError:
 
 class TriggerSource(str, Enum):
     CONTINUOUS = "Continuous"
+    # HikCamManager offers - and setup files therefore carry - the upstream
+    # spelling "Continous". Without this alias the mock rejects the value that
+    # the real camera accepts, and a setup written for hardware cannot be
+    # started without it.
+    CONTINOUS = "Continous"
     SOFTWARE = "Internal trigger"
     EXTERNAL = "External trigger"
 

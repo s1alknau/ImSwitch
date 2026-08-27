@@ -73,7 +73,9 @@ _modulesFilePath = os.path.join(dirtools.UserFileDirs.Config, 'modules.json')
 
 if not os.path.isfile(_modulesFilePath):
     # Modules file doesn't exist, create it.
-        _modules = _Modules(enabled=['imcontrol', 'imscripting', 'imnotebook'])
+        # imscripting is dropped by __main__ anyway, and imnotebook needs a
+        # jupyter-lab on PATH plus QtWebEngine - neither is part of this rig.
+        _modules = _Modules(enabled=['imcontrol'])
 else:
     try:
         with open(_modulesFilePath, 'r') as modulesFile: # TODO: Do something about it: if the file is corrupted, the user has to watch it
