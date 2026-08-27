@@ -11,6 +11,22 @@ from vispy.visuals.transforms import STTransform
 from .imagetools import minmaxLevels
 
 
+def connectMouseEvents(canvas, *callbacks):
+    """ Connect on_mouse_* callbacks to the canvas of an embedded napari viewer.
+
+    vispy's SceneCanvas has connect(), which binds a callback by its name.
+    napari's VispyCanvas wrapper (>= 0.5) does not — but its events property
+    forwards to the underlying SceneCanvas, so the events are reachable there.
+    """
+    events = getattr(canvas, 'events', None)
+    for callback in callbacks:
+        event = getattr(events, callback.__name__.removeprefix('on_'), None)
+        if event is not None:
+            event.connect(callback)
+        else:
+            canvas.connect(callback)
+
+
 def addNapariGrayclipColormap():
     if hasattr(napari.utils.colormaps.AVAILABLE_COLORMAPS, 'grayclip'):
         return
@@ -410,9 +426,8 @@ class VispyROIVisual(VispyBaseVisual):
 
         self._nodes = [self.rect_node, self.handle_node]
 
-        canvas.connect(self.on_mouse_press)
-        canvas.connect(self.on_mouse_move)
-        canvas.connect(self.on_mouse_release)
+        connectMouseEvents(canvas, self.on_mouse_press, self.on_mouse_move,
+                           self.on_mouse_release)
         self._viewer.camera.events.zoom.connect(self._on_zoom_change)
         self._viewer.dims.events.ndisplay.connect(self._on_data_change)
 
@@ -571,9 +586,8 @@ class VispyLineVisual(VispyBaseVisual):
 
         self._nodes = [self.node]
 
-        canvas.connect(self.on_mouse_press)
-        canvas.connect(self.on_mouse_move)
-        canvas.connect(self.on_mouse_release)
+        connectMouseEvents(canvas, self.on_mouse_press, self.on_mouse_move,
+                           self.on_mouse_release)
         self._viewer.camera.events.zoom.connect(self._on_zoom_change)
         self._viewer.dims.events.ndisplay.connect(self._on_data_change)
 
@@ -785,12 +799,8 @@ class VispyCrosshairVisual(VispyBaseVisual):
 
         self._nodes = [self.node]
 
-        try:
-            canvas.connect(self.on_mouse_press)
-            canvas.connect(self.on_mouse_move)
-            canvas.connect(self.on_mouse_release)
-        except Exception as e:
-            print(f'Error connecting to canvas: {e}')
+        connectMouseEvents(canvas, self.on_mouse_press, self.on_mouse_move,
+                           self.on_mouse_release)
         self._viewer.camera.events.zoom.connect(self._on_zoom_change)
         self._viewer.dims.events.ndisplay.connect(self._on_data_change)
 
