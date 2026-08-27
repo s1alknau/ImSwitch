@@ -64,12 +64,14 @@ def prepareApp():
     )
     os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'  # Force HDF5 to not lock files
     os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
-    # Set application attributes (Qt5 only — these are removed/always-on in Qt6)
+    # QtWebEngine (imnotebook) needs a shared GL context, and the attribute only
+    # takes effect while no QApplication exists yet — in every Qt version.
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
+    # The HighDPI attributes are Qt5-only — removed/always-on in Qt6.
     import qtpy
     if qtpy.API_NAME in ('PyQt5', 'PySide2'):
         QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
         QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
-        QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
         QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_DisableHighDpiScaling, True)
     app = QtWidgets.QApplication(['', '--no-sandbox'])
     app.setStyleSheet("QWidget { font-size: 9pt; }")  # Smaller default font
