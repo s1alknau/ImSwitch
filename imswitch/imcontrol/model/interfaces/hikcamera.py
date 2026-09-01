@@ -663,6 +663,12 @@ class CameraHIK:
         exposure_mode = exposure_mode.lower()
         if exposure_mode == "manual":
             self.camera.MV_CC_SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_OFF)
+            # Also disable AutoGain — otherwise the SDK default (Continuous)
+            # keeps regulating gain and the image "breathes" slowly even
+            # though exposure is fixed. The Hik SDK constant MV_GAIN_MODE_OFF
+            # is 0, matching MV_EXPOSURE_AUTO_MODE_OFF; reuse that here to
+            # avoid an extra import.
+            self.camera.MV_CC_SetEnumValue("GainAuto", MV_EXPOSURE_AUTO_MODE_OFF)
         elif exposure_mode == "auto":
             self.camera.MV_CC_SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_CONTINUOUS)
         elif exposure_mode == "once":
