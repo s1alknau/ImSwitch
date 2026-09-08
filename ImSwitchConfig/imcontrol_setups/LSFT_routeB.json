@@ -1,0 +1,116 @@
+{
+    "detectors": {
+        "LightSheet": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "GXPIPYManager",
+            "managerProperties": {
+                "cameraListIndex": 1,
+                "gxipycam": {
+                    "exposure": 10,
+                    "gain": 0,
+                    "blacklevel": 100,
+                    "image_width": 1000,
+                    "image_height": 1000,
+                    "binning": 1
+                }
+            },
+            "forAcquisition": true
+        }
+    },
+    "lasers": {
+        "635 Laser": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "ESP32LEDLaserManager",
+            "managerProperties": {
+                "rs232device": "ESP32",
+                "channel_index": 1,
+                "filter_change": false
+            },
+            "valueRangeMin": 0,
+            "valueRangeMax": 255,
+            "wavelength": 635,
+            "valueRangeStep": 1.0
+        },
+        "LED": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "ESP32LEDLaserManager",
+            "managerProperties": {
+                "rs232device": "ESP32",
+                "channel_index": 2,
+                "filter_change": false
+            },
+            "valueRangeMin": 0,
+            "valueRangeMax": 255,
+            "wavelength": 0,
+            "valueRangeStep": 1.0
+        }
+    },
+    "positioners": {
+        "ESPStage": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "ESP32StageManager",
+            "managerProperties": {
+                "rs232device": "ESP32"
+            },
+            "axes": [
+                "X",
+                "Y",
+                "Z"
+            ],
+            "isPositiveDirection": true,
+            "forPositioning": true,
+            "forScanning": true
+        }
+    },
+    "rotators": {
+        "ESP32Rotator": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "ESP32RotatorManager",
+            "managerProperties": {
+                "rs232device": "ESP32",
+                "stepsPerTurn": 3200,
+                "startSpeed": 15000,
+                "acceleration": null,
+                "stepSizeA": 1,
+                "backlashA": 0,
+                "moveTimeout": 30,
+                "asyncMove": true
+            }
+        }
+    },
+    "rs232devices": {
+        "ESP32": {
+            "managerName": "ESP32Manager",
+            "managerProperties": {
+                "serialport": "auto"
+            }
+        }
+    },
+    "pyroServerInfo": {
+        "name": "ImSwitchServer",
+        "host": "127.0.0.1",
+        "port": 54333
+    },
+    "rois": {
+        "Full chip": {
+            "x": 0,
+            "y": 0,
+            "w": 1000,
+            "h": 1000
+        }
+    },
+    "availableWidgets": [
+        "Settings",
+        "View",
+        "Recording",
+        "Image",
+        "Laser",
+        "Positioner",
+        "Rotator"
+    ]
+}

@@ -5,6 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
+            // Startet ImSwitch mit der Rig-Konfiguration aus diesem Repo.
+            // Ohne --config-folder faellt ImSwitch still auf ~/ImSwitchConfig
+            // zurueck und laedt eine andere Konfiguration.
+            "name": "ImSwitch (Nematostella-Rig)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "imswitch",
+            "args": [
+                "--config-folder", "${workspaceFolder}/ImSwitchConfig"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "subProcess": true
+        },
+        {
             "name": "Python: Aktuelle Datei",
             "type": "python",
             "request": "launch",

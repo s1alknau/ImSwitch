@@ -1,0 +1,38 @@
+{
+  "rs232devices": {},
+  "detectors": {
+    "WidefieldCamera": {
+      "managerName": "HikCamManager",
+      "managerProperties": {
+        "isRGB": false,
+        "cameraListIndex": 0,
+        "cameraEffPixelsize": 3.45,
+        "hikcam": {
+          "exposure": 5.0,
+          "gain": 0.0,
+          "blacklevel": 0,
+          "trigger_source": "Continuous",
+          "exposure_mode": "manual",
+          "frame_rate": 30
+        }
+      },
+      "forAcquisition": true
+    }
+  },
+  "availableWidgets": [
+    "Settings",
+    "View", 
+    "Image"
+  ],
+  "_disabled_devices": {
+    "ESP32": {
+      "managerName": "ESP32Manager", 
+      "managerProperties": {
+        "host_": "192.168.43.129",
+        "serialport": "COM4",
+        "debug": 0,
+        "baudrate": 115200
+      }
+    }
+  }
+}

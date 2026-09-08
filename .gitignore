@@ -101,3 +101,8 @@ docker/HIK/cheatsheet.txt
 docker/HIK/cheatsheet.txt
 main2.py
 /LepmonOS_update
+
+# Rig-Konfiguration liegt im Repo (ImSwitchConfig/), ihre Laufzeitdaten nicht:
+# logs/ waechst bei jedem Start, data/ nimmt Aufnahmen auf.
+ImSwitchConfig/logs/
+ImSwitchConfig/data/

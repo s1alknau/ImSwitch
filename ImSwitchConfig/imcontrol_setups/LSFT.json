@@ -1,0 +1,40 @@
+{
+    "detectors": {
+        "LightSheet": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "GXPIPYManager",
+            "managerProperties": {
+                "cameraListIndex": 1,
+                "gxipycam": {
+                    "exposure": 10,
+                    "gain": 0,
+                    "blacklevel": 100,
+                    "image_width": 1000,
+                    "image_height": 1000,
+                    "binning": 1
+                }
+            },
+            "forAcquisition": true
+        }
+    },
+    "pyroServerInfo": {
+        "name": "ImSwitchServer",
+        "host": "127.0.0.1",
+        "port": 54333
+    },
+    "rois": {
+        "Full chip": {
+            "x": 0,
+            "y": 0,
+            "w": 1000,
+            "h": 1000
+        }
+    },
+    "availableWidgets": [
+        "Settings",
+        "View",
+        "Recording",
+        "Image"
+    ]
+}
