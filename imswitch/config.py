@@ -5,7 +5,24 @@ This module provides a centralized way to manage ImSwitch configuration,
 replacing the global variables with a proper configuration object.
 """
 from typing import Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+def _resolve_version() -> str:
+    """
+    Version for the startup log and the HTTP API.
+
+    Single source of truth is imswitch.__version__ - the release workflow
+    rewrites that one with the tag. It is read lazily because imswitch
+    imports this module while it is still initialising, so the attribute
+    may not exist yet at class definition time.
+    """
+    try:
+        import imswitch
+
+        return getattr(imswitch, "__version__", "") or "unknown"
+    except Exception:
+        return "unknown"
 
 
 @dataclass
@@ -51,8 +68,8 @@ class ImSwitchConfig:
     jupyter_port: int = 8888
     jupyter_url: str = "localhost"
 
-    # Version info
-    version: str = "2.1.41"
+    # Version info (follows imswitch.__version__, see _resolve_version)
+    version: str = field(default_factory=_resolve_version)
 
     # Logging settings
     log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
