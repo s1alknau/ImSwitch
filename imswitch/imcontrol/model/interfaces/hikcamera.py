@@ -839,6 +839,8 @@ class CameraHIK:
             self.set_flatfielding(property_value)
         elif property_name == "trigger_source":
             self.setTriggerSource(property_value)
+        elif property_name == "sensor_shutter_mode":
+            return self.setSensorShutterMode(property_value)
         elif property_name == 'mode':
             self.set_camera_mode(isAutomatic=property_value)
         else:
@@ -873,6 +875,110 @@ class CameraHIK:
             return False
         property_value = stValue.nCurValue
         return property_value
+
+    def getDeviceModelName(self) -> str:
+        """Return the Hikvision device model string (e.g. 'MV-CE050-30GM')."""
+        try:
+            name = MVCC_STRINGVALUE()
+            ret = self.camera.MV_CC_GetStringValue("DeviceModelName", name)
+            if ret != 0:
+                return ""
+            return name.chCurValue.decode(errors="ignore").strip()
+        except Exception as e:
+            self.__logger.debug(f"getDeviceModelName failed: {e}")
+            return ""
+
+    def getSensorShutterMode(self) -> str:
+        """Read current SensorShutterMode as string, or '' if unsupported."""
+        try:
+            stValue = MVCC_ENUMVALUE()
+            ret = self.camera.MV_CC_GetEnumValue("SensorShutterMode", stValue)
+            if ret != 0:
+                return ""
+            code = int(stValue.nCurValue)
+            # SDK enum codes (from MvCameraControlDefines.h):
+            # 0 = Global, 1 = Rolling, 2 = GlobalReset
+            return {0: "Global", 1: "Rolling", 2: "GlobalReset"}.get(code, f"code={code}")
+        except Exception as e:
+            self.__logger.debug(f"getSensorShutterMode failed: {e}")
+            return ""
+
+    def setSensorShutterMode(self, mode: str) -> bool:
+        """
+        Try to set the sensor shutter mode. Returns True on success.
+
+        Many Hikvision sensors don't expose SensorShutterMode at all — some
+        CE-series rolling-shutter models are fixed in hardware, and most
+        CS-series global-shutter sensors (e.g. MV-CS013-60GN with IMX287)
+        are also fixed. In both cases the parameter simply does not exist
+        on the camera, and writing to it can destabilise the SDK state.
+
+        This method probes with GetEnumValue first — if the read fails,
+        the parameter is unsupported and we return False WITHOUT touching
+        the live stream or attempting the write. If the parameter exists
+        and is already at the requested mode, we return True as a no-op.
+
+        Valid modes: 'Global', 'Rolling', 'GlobalReset'.
+        """
+        wanted = str(mode).strip()
+        canonical = wanted.replace(" ", "").replace("_", "").lower()
+        mode_map = {"global": "Global", "rolling": "Rolling", "globalreset": "GlobalReset"}
+        if canonical not in mode_map:
+            self.__logger.warning(f"Unknown shutter mode requested: {mode}")
+            return False
+        target = mode_map[canonical]
+
+        model = self.getDeviceModelName()
+
+        # Probe whether the camera even exposes SensorShutterMode. If not,
+        # bail out cleanly — do NOT touch the stream or call SetEnumValue,
+        # which can otherwise leave the SDK in a bad state and crash the
+        # process on the next MV_CC_* call.
+        probe = MVCC_ENUMVALUE()
+        probe_ret = self.camera.MV_CC_GetEnumValue("SensorShutterMode", probe)
+        if probe_ret != 0:
+            self.__logger.info(
+                f"SensorShutterMode not supported on '{model}' "
+                f"(GetEnumValue ret=0x{probe_ret:x}). "
+                "Sensor has a fixed shutter type — no action taken."
+            )
+            return False
+
+        # Parameter exists. Check current value; skip write if already correct.
+        current_before = self.getSensorShutterMode()
+        if current_before == target:
+            self.__logger.info(
+                f"SensorShutterMode already '{target}' on '{model}' — no change needed."
+            )
+            return True
+
+        was_streaming = self.is_streaming
+        if was_streaming:
+            self.suspend_live()
+        try:
+            ret = self.camera.MV_CC_SetEnumValueByString("SensorShutterMode", target)
+            if ret != 0:
+                self.__logger.warning(
+                    f"SensorShutterMode='{target}' rejected by camera "
+                    f"(model='{model}', ret=0x{ret:x}). "
+                    "Target mode not supported on this sensor."
+                )
+                return False
+            current = self.getSensorShutterMode()
+            self.__logger.info(
+                f"SensorShutterMode set to '{target}' on '{model}' "
+                f"(readback='{current}')"
+            )
+            return True
+        except Exception as e:
+            self.__logger.warning(f"setSensorShutterMode('{target}') raised: {e}")
+            return False
+        finally:
+            if was_streaming:
+                try:
+                    self.start_live()
+                except Exception as e:
+                    self.__logger.error(f"Failed to restart live view after shutter set: {e}")
 
     def setTriggerSource(self, trigger_source):
         """
