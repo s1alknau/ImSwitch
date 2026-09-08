@@ -4,6 +4,8 @@ from imswitch.imcommon.model import initLogger
 from skimage.filters import gaussian, median
 from typing import List
 import sys
+import atexit
+import weakref
 from ctypes import *
 import collections
 
@@ -77,6 +79,26 @@ CALLBACK_SIG = CFUNCTYPE(
     c_void_p                        # pUser (void*)
 )
 # ----------------------------------------------------------------------------
+def _close_camera_on_exit(camera_ref):
+    """
+    Release a camera that is still open when the interpreter shuts down.
+
+    A GigE camera keeps its control channel assigned to the process that
+    opened it. If that process ends without MV_CC_CloseDevice, every later
+    OpenDevice fails with MV_E_ACCESS_DENIED (0x80000203) and the camera has
+    to be power-cycled before it can be used again - it looks exactly like a
+    camera that is no longer detected. Registered per instance via atexit,
+    with a weak reference so the hook never keeps the camera alive by itself.
+    """
+    camera = camera_ref()
+    if camera is None:
+        return
+    try:
+        camera.close()
+    except Exception:
+        pass  # interpreter is going down; nothing useful left to report
+
+
 class CameraHIK:
     """Minimal wrapper that grabs frames via SDK callback (no polling)."""
 
@@ -118,6 +140,7 @@ class CameraHIK:
         self.g_bExit = False
 
         self._open_camera(self.cameraNo)
+        atexit.register(_close_camera_on_exit, weakref.ref(self))
 
         self.isFlatfielding = False
 
@@ -644,16 +667,34 @@ class CameraHIK:
         pass
 
     def close(self):
-        if self.is_streaming:
-            self.stop_live()
+        """Release the camera. Safe to call more than once."""
+        if getattr(self, "camera", None) is None:
+            return
 
-        # Ensure callback is deregistered before closing
-        if hasattr(self, '_callback_registered') and self._callback_registered:
-            self.camera.MV_CC_RegisterImageCallBackEx(None, None)
-            self._callback_registered = False
+        try:
+            if self.is_streaming:
+                self.stop_live()
 
-        self.camera.MV_CC_CloseDevice()
-        self.camera.MV_CC_DestroyHandle()
+            # Ensure callback is deregistered before closing
+            if hasattr(self, '_callback_registered') and self._callback_registered:
+                self.camera.MV_CC_RegisterImageCallBackEx(None, None)
+                self._callback_registered = False
+
+            self.camera.MV_CC_CloseDevice()
+            self.camera.MV_CC_DestroyHandle()
+        finally:
+            # Drop the handle even if closing failed, so a second attempt
+            # cannot operate on a half-torn-down camera.
+            self.camera = None
+            self.is_connected = False
+
+    def __del__(self):
+        # Backstop for the case where the object is dropped long before
+        # interpreter shutdown; atexit alone would hold the camera until then.
+        try:
+            self.close()
+        except Exception:
+            pass
 
     def set_exposure_time(self, exposure_time):
         self.exposure_time = exposure_time
