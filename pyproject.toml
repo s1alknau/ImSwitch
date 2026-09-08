@@ -67,6 +67,8 @@ dependencies = [
     "msgpack>=1.0.4",
     "esptool",
     "av==13.1.0",
+    # Ohne Qt-Extra: das Binding wird separat gewaehlt (PySide6, siehe README).
+    "napari >= 0.9.1",
 ]
 
 [project.optional-dependencies]
@@ -77,7 +79,6 @@ PyQt5 = [
     "QScintilla >= 2.12",
     "PyQtWebEngine >= 5.15.2",
     "pyqtgraph >= 0.12.1",
-    "napari[pyqt5] >= 0.6.0",
     "lantzdev[qt] >= 0.5.2",
     "qtpy >= 1.9",
 ]

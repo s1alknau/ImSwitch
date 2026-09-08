@@ -5,12 +5,12 @@ h5py >= 3
 pyvisa-py==0.4.1
 lantzdev[qt] >= 0.5.2
 luddite >= 1
-napari[pyqt5] < 0.5.0
+napari >= 0.9.1
 nidaqmx >= 0.5.7
 numpy == 1.23.5
 packaging >= 19
 psutil >= 5.4.8
-PyQt5 >= 5.15.2
+PySide6 >= 6.8.3
 pyqtgraph == 0.13.3
 microscope
 pyserial >= 3.4
