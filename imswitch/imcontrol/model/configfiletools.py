@@ -16,6 +16,27 @@ _configsFilePath = os.path.join(dirtools.UserFileDirs.Config, 'imcontrol_options
 _options = None
 _configs = None
 
+def refreshPaths():
+    """
+    Recompute the module-level paths after the configuration folder changed.
+
+    _setupFilesDir and the options file are resolved once at import time, so a
+    folder switch at runtime (setup picker) has to invalidate them explicitly,
+    together with the cached options.
+    """
+    global _setupFilesDir, _optionsFilePath, _configsFilePath, _options, _configs
+
+    dirtools.UserFileDirs.refresh_paths()
+    _setupFilesDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_setups')
+    os.makedirs(_setupFilesDir, exist_ok=True)
+    os.makedirs(dirtools.UserFileDirs.Config, exist_ok=True)
+    _optionsFilePath = os.path.join(dirtools.UserFileDirs.Config, 'imcontrol_options.json')
+    _configsFilePath = _optionsFilePath
+    _options = None
+    _configs = None
+    return _setupFilesDir
+
+
 def getSetupList():
     return [Path(file).name for file in glob.glob(os.path.join(_setupFilesDir, '*.json'))]
 

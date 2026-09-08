@@ -28,6 +28,14 @@ def getMainViewAndController(moduleCommChannel, *_args,
         if result != QtWidgets.QDialog.Accepted or not setupFileName:
             logger.critical('User did not pick a setup to use')
             sys.exit()
+
+        if pickSetupDialog.configFolderChanged:
+            # The options handed to us were read from the folder that was
+            # active before the user switched, so they no longer apply.
+            from imswitch.imcommon.model import dirtools
+            logger.info(f'Configuration folder switched to {dirtools.UserFileDirs.Root}')
+            options, _ = configfiletools.loadOptions()
+
         return dataclasses.replace(options, setupFileName=setupFileName)
 
 

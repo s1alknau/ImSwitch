@@ -16,6 +16,23 @@ import shutil
 from typing import Optional, List, Dict, Any, Tuple
 
 
+# Folder remembered by the "change folder" button in the setup picker. It lives
+# outside the configuration folder for the obvious reason that it is what tells
+# us where that folder is.
+_CONFIG_POINTER_FILE = os.path.join(os.path.expanduser('~'), '.imswitch_config_folder')
+
+
+def _read_config_pointer() -> Optional[str]:
+    """Return the remembered configuration folder, or None if there is none."""
+    try:
+        with open(_CONFIG_POINTER_FILE, 'r', encoding='utf-8') as pointerFile:
+            path = pointerFile.read().strip()
+    except OSError:
+        return None
+
+    return path if path and os.path.isdir(path) else None
+
+
 def get_data_path() -> str:
     """
     Get the current data storage path.
@@ -52,7 +69,8 @@ def get_config_path() -> str:
     
     Precedence:
     1. Config config_folder (from CLI args or environment)
-    2. Default: ~/ImSwitchConfig
+    2. Folder remembered from the setup picker (~/.imswitch_config_folder)
+    3. Default: ~/ImSwitchConfig
     
     Returns:
         Absolute path to configuration directory
@@ -63,6 +81,10 @@ def get_config_path() -> str:
 
     if config.config_folder and os.path.isdir(config.config_folder):
         return config.config_folder
+
+    remembered = _read_config_pointer()
+    if remembered:
+        return remembered
 
     default = os.path.join(os.path.expanduser('~'), 'ImSwitchConfig')
     os.makedirs(default, exist_ok=True)
@@ -103,6 +125,46 @@ def set_data_path(path: str) -> Tuple[bool, str]:
     config._runtime_data_path = path
 
     return True, ""
+
+
+def set_config_path(path: str, persist: bool = True) -> Tuple[bool, str]:
+    """
+    Switch the configuration folder while ImSwitch is running.
+
+    Used by the setup picker so a different ImSwitchConfig folder can be
+    chosen without restarting with --config-folder. With persist=True the
+    choice is written to ~/.imswitch_config_folder and therefore also applies
+    to the next start; an explicit --config-folder still takes precedence
+    over it.
+
+    Callers must afterwards refresh whatever cached the old paths:
+    dirtools.UserFileDirs.refresh_paths() and configfiletools.refreshPaths().
+
+    Returns:
+        (success, message) - message carries the reason on failure
+    """
+    from imswitch.config import get_config
+
+    if not path or not os.path.isdir(path):
+        return False, f"Not a directory: {path}"
+
+    path = os.path.abspath(path)
+    get_config().config_folder = path
+
+    try:
+        import imswitch
+        imswitch.DEFAULT_CONFIG_PATH = path
+    except Exception:
+        pass  # legacy global, not worth failing the switch over
+
+    if persist:
+        try:
+            with open(_CONFIG_POINTER_FILE, 'w', encoding='utf-8') as pointerFile:
+                pointerFile.write(path)
+        except OSError as e:
+            return True, f"Folder switched, but could not be remembered: {e}"
+
+    return True, path
 
 
 def get_storage_info(path: Optional[str] = None) -> Dict[str, Any]:
