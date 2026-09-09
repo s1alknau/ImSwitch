@@ -164,7 +164,14 @@ class HikCamManager(DetectorManager):
         contain a key with the specified parameter name, an error will be
         raised."""
 
-        if name not in self._parameters:
+        # self._parameters does not exist - DetectorManager keeps them in a
+        # name-mangled attribute and exposes them as the parameters property,
+        # which setParameter and setTriggerSource already use. Reading through
+        # the wrong name made every getParameter() call raise AttributeError,
+        # so callers silently fell back to their own defaults: the recording
+        # plugin logged and stored 10 ms exposure for every recording while
+        # the camera was running at the 5 ms from the setup file.
+        if name not in self.parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
         value = self._camera.getPropertyValue(name)
