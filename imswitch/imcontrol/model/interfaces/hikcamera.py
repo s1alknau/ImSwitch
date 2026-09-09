@@ -400,7 +400,13 @@ class CameraHIK:
     # C callback factory ---------------------------------------------------
     # ---------------------------------------------------------------------
     def _on_frame(self, frame: np.ndarray, fid: int, ts: int):
-        self.frame_buffer.append(frame)
+        # The array handed in is a zero-copy view onto the SDK's frame buffer,
+        # which the camera reuses for the frames that follow. Storing the view
+        # means every consumer holds a window that keeps changing underneath
+        # it: a frame read as bright is dark again milliseconds later, and a
+        # read that overlaps an incoming frame returns one image stitched
+        # together from two. The ring buffer therefore keeps its own copy.
+        self.frame_buffer.append(np.array(frame, copy=True))
         self.frameid_buffer.append(fid)
         self.frameNumber = fid
         self.timestamp   = ts
