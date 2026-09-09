@@ -32,6 +32,13 @@ class ImageController(LiveUpdatedController):
             self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition), isRGB
         )
 
+        # "Update levels" should mark real saturation rather than just the
+        # brightest pixel of the current frame, so it needs the sensor's full
+        # scale. The detector reports it as previewMaxValue - 4095 on a 12-bit
+        # camera, 255 on an 8-bit one.
+        if hasattr(self._widget, 'setSensorMaxGetter'):
+            self._widget.setSensorMaxGetter(self._getSensorMaxValue)
+
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
         self._commChannel.sigAdjustFrame.connect(self.adjustFrame)
@@ -42,6 +49,16 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigMemorySnapAvailable.connect(self.memorySnapAvailable)
         self._commChannel.sigSetExposure.connect(lambda t: self.setExposure(t))
 
+
+    def _getSensorMaxValue(self):
+        """ Full scale of the current detector, or None if it does not say. """
+        try:
+            return self._master.detectorsManager.execOnCurrent(
+                lambda c: c.parameters['previewMaxValue'].value
+            )
+        except Exception as e:
+            self.__logger.debug(f'No previewMaxValue available: {e}')
+            return None
 
     @APIExport(runOnUIThread=False)
     def displayImageNapari(self, layerName, mImage, isRGB=False, scale=(1,1), isCurrentDetector=None): # TODO: Flag of RGB is not used!

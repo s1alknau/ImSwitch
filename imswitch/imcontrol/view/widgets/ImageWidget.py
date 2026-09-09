@@ -106,6 +106,10 @@ class ImageWidget(QtWidgets.QWidget):
     def setCrosshairVisible(self, visible):
         self.crosshair.setVisible(visible)
 
+    def setSensorMaxGetter(self, getter):
+        """ Tell the level widget how to ask for the sensor's full scale. """
+        self.updateLevelsWidget.sensorMaxGetter = getter
+
     def resetView(self):
         self.napariViewer.reset_view()
 

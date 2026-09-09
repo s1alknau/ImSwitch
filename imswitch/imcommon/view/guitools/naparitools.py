@@ -140,6 +140,11 @@ class NapariUpdateLevelsWidget(NapariBaseWidget):
     def __init__(self, napariViewer):
         super().__init__(napariViewer)
 
+        # Returns the highest value the sensor can produce (4095 on a 12-bit
+        # camera). Set by ImageController once the detector is known; without
+        # it the widget falls back to pure autoscaling.
+        self.sensorMaxGetter = None
+
         # Update levels button
         self.updateLevelsButton = QtWidgets.QPushButton('Update levels')
         self.updateLevelsButton.clicked.connect(self._on_update_levels)
@@ -152,9 +157,47 @@ class NapariUpdateLevelsWidget(NapariBaseWidget):
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                                  QtWidgets.QSizePolicy.Maximum))
 
+    def _sensorMax(self):
+        """Sensor full scale, or None when the detector could not tell us."""
+        if self.sensorMaxGetter is None:
+            return None
+        try:
+            value = self.sensorMaxGetter()
+            return float(value) if value else None
+        except Exception:
+            return None
+
+    def _levelsFor(self, data):
+        """
+        Contrast limits for one layer.
+
+        The grayclip colormap paints its topmost bin red, so whatever the
+        upper limit is gets marked as clipped. Scaling to the frame maximum -
+        as minmaxLevels does - therefore paints the brightest pixels of every
+        image red, well exposed or not, and the marking says nothing.
+
+        Two cases instead:
+        - the frame reaches the sensor's full scale: scale to exactly that, so
+          the pixels sitting at the limit end up in the red bin. Red then means
+          "saturated, no information left here".
+        - it does not: leave a percent of headroom above the brightest pixel so
+          it stays out of the red bin, and nothing is marked.
+        """
+        dataMax = float(data.max())
+        sensorMax = self._sensorMax()
+
+        if sensorMax is not None and dataMax >= sensorMax:
+            # Exactly the full scale, not a little above it: the colormap
+            # interpolates towards its red stop and only reaches pure red at
+            # the upper limit itself. Pixels sitting at the sensor limit
+            # therefore come out unmistakably red, everything below stays grey.
+            return 0.0, sensorMax
+
+        return 0.0, dataMax + max(2.0, dataMax * 0.01)
+
     def _on_update_levels(self):
         for layer in self.viewer.layers.selection:
-            layer.contrast_limits = minmaxLevels(layer.data)
+            layer.contrast_limits = self._levelsFor(layer.data)
 
 
 class NapariResetViewWidget(NapariBaseWidget):
