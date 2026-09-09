@@ -218,6 +218,86 @@ class CameraHIK:
     # ---------------------------------------------------------------------
     # Camera discovery / opening
     # ---------------------------------------------------------------------
+    # Seconds the camera is given to notice that a previous owner is gone.
+    # Slightly above the heartbeat timeout armed in _arm_heartbeat().
+    _STALE_LOCK_WAIT_S = 12.0
+    _HEARTBEAT_TIMEOUT_MS = 5000
+
+    def _open_device_waiting_out_stale_lock(self, poll_interval_s: float = 2.0):
+        """
+        Open the device, waiting out a control channel nobody owns any more.
+
+        A GigE camera binds its control channel to the process that opened it.
+        If that process ended without MV_CC_CloseDevice - a crash, a killed
+        interpreter, a script without cleanup - the camera keeps the binding
+        until the heartbeat expires. Every OpenDevice in between fails with
+        MV_E_ACCESS_DENIED, which reads like a camera that has disappeared and
+        used to send ImSwitch straight to the mock detector.
+
+        Retrying across that window turns a hard failure into a short delay.
+        Anything other than ACCESS_DENIED is raised immediately - a camera on
+        the wrong subnet should not cost twelve seconds before saying so.
+        """
+        deadline = time.time() + self._STALE_LOCK_WAIT_S
+        attempt = 0
+        started = time.time()
+
+        while True:
+            attempt += 1
+            ret = self.camera.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0)
+            if ret == 0:
+                if attempt > 1:
+                    self.__logger.info(
+                        f"Camera opened after waiting {time.time() - started:.1f}s "
+                        f"for a stale connection to expire ({attempt} attempts)"
+                    )
+                return
+
+            if ret != MV_E_ACCESS_DENIED:
+                raise RuntimeError(f"OpenDevice failed 0x{ret:x}")
+
+            if time.time() >= deadline:
+                raise RuntimeError(
+                    f"OpenDevice failed 0x{ret:x} (MV_E_ACCESS_DENIED): the camera is "
+                    f"still held by another connection after {self._STALE_LOCK_WAIT_S:.0f}s. "
+                    "Either another program has it open, or a previous session ended "
+                    "without closing it - in that case power-cycle the camera."
+                )
+
+            self.__logger.warning(
+                f"Camera reports MV_E_ACCESS_DENIED, waiting for the previous "
+                f"connection to expire (attempt {attempt})"
+            )
+            time.sleep(poll_interval_s)
+
+    def _arm_heartbeat(self):
+        """
+        Let the camera drop us on its own if this process stops answering.
+
+        This is the other half of the problem above: without a heartbeat the
+        camera has no way to notice a dead owner and stays locked until it is
+        power-cycled. GevHeartbeatTimeout is a standard GigE Vision node, so a
+        camera that does not offer it simply logs and carries on.
+
+        The SDK answers the heartbeat from its own thread, so ordinary Python
+        work does not endanger the connection; a debugger stopped at a
+        breakpoint for longer than the timeout does.
+        """
+        ret = self.camera.MV_CC_SetIntValue("GevHeartbeatTimeout", self._HEARTBEAT_TIMEOUT_MS)
+        if ret == 0:
+            self.__logger.debug(
+                f"GevHeartbeatTimeout set to {self._HEARTBEAT_TIMEOUT_MS} ms - "
+                "an abandoned connection is released after that"
+            )
+        else:
+            # Not writable on every model - on the MV-CS series the MVS SDK
+            # keeps the heartbeat to itself. Nothing can be done about it, and
+            # nothing worth a warning on every single start.
+            self.__logger.debug(
+                f"GevHeartbeatTimeout not settable (0x{ret & 0xffffffff:x}); "
+                "relying on close() and the open retry instead"
+            )
+
     def _open_camera(self, number: int):
         # gather all devices (GigE then USB)
         infos = []  # List[MV_CC_DEVICE_INFO]
@@ -292,9 +372,7 @@ class CameraHIK:
         ret = self.camera.MV_CC_CreateHandle(infos[number])
         if ret != 0:
             raise RuntimeError(f"CreateHandle failed 0x{ret:x}")
-        ret = self.camera.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0)
-        if ret != 0:
-            raise RuntimeError(f"OpenDevice failed 0x{ret:x}")
+        self._open_device_waiting_out_stale_lock()
 
         # optimise packet size for GigE
         if infos[number].nTLayerType == MV_GIGE_DEVICE:
@@ -302,6 +380,8 @@ class CameraHIK:
             if psize > 0:
                 self.camera.MV_CC_SetIntValue("GevSCPSPacketSize", psize)
                 self.__logger.debug(f"Set packet size to {psize} for GigE camera")
+
+            self._arm_heartbeat()
         # print unique ID: # TODO: We should make the cameraNo persistent based on this ID
         self.__logger.info(f"Unique Serial Number of HIK Camera: {np.sum(infos[number].SpecialInfo.stUsb3VInfo.chSerialNumber)}")
         # get available parameters
