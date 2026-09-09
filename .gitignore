@@ -106,3 +106,19 @@ main2.py
 # logs/ waechst bei jedem Start, data/ nimmt Aufnahmen auf.
 ImSwitchConfig/logs/
 ImSwitchConfig/data/
+
+# ImSwitch kopiert beim Start seine mitgelieferten Beispiele in den
+# Konfigurationsordner (dirtools.initUserFilesIfNeeded). Sie gehoeren nicht
+# zum Rig und tauchen sonst nach jedem Start als untracked auf.
+ImSwitchConfig/imcontrol_setups/FRAME2b.json
+ImSwitchConfig/imcontrol_setups/FRAME2b_tucsen.json
+ImSwitchConfig/imcontrol_setups/example_galvo_scanner.json
+ImSwitchConfig/imcontrol_setups/example_raspberry_pi_camera.json
+ImSwitchConfig/imcontrol_setups/example_tucsen.json
+ImSwitchConfig/imcontrol_setups/example_tucsen_lumencor.json
+ImSwitchConfig/imcontrol_setups/piholo.json
+ImSwitchConfig/imnotebook/2025_05_01_UC2_Example_DPC.ipynb
+ImSwitchConfig/imnotebook/ImSwitch_FocusMap copy.ipynb
+ImSwitchConfig/imnotebook/ImSwitch_MAZE.ipynb
+ImSwitchConfig/imnotebook/RunMDASequence_in_ImSwitch.ipynb
+ImSwitchConfig/imnotebook/hologram_education_notebook.ipynb
