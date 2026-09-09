@@ -895,33 +895,57 @@ class CameraHIK:
             return False
         return property_value
 
+    # GenICam node types per property. Reading a float node with
+    # MV_CC_GetEnumValue does not fail loudly, it just yields 0 - which is why
+    # a check of "is the exposure still what I set?" used to answer 0 ms.
+    _FLOAT_PROPERTIES = {"gain": "Gain", "exposure": "ExposureTime"}
+    _INT_PROPERTIES = {
+        "blacklevel": "BlackLevel",
+        "image_width": "Width",
+        "image_height": "Height",
+    }
+    _ENUM_PROPERTIES = {"exposure_mode": "ExposureAuto"}
+
     def getPropertyValue(self, property_name):
-        stValue = MVCC_ENUMVALUE()
-        if property_name == "gain":
-            self.camera.MV_CC_GetEnumValue("Gain", stValue)
-        elif property_name == "exposure":
-            self.camera.MV_CC_GetEnumValue("ExposureTime", stValue)
-        elif property_name == "frame_number":
-            self.camera.MV_CC_GetEnumValue("FrameNum", stValue)
-        elif property_name == "exposure_mode":
-            self.camera.MV_CC_GetEnumValue("ExposureAuto", stValue)
-        elif property_name == "blacklevel":
-            self.camera.MV_CC_GetEnumValue("BlackLevel", stValue)
-        elif property_name == "image_width":
-            self.camera.MV_CC_GetEnumValue("Width", stValue)
-        elif property_name == "image_height":
-            self.camera.MV_CC_GetEnumValue("Height", stValue)
-        elif property_name == "roi_size":
-            property_value = self.roi_size
-        elif property_name == "frame_Rate":
-            property_value = self.frame_rate
-        elif property_name == "trigger_source":
-            property_value = self.trigger_source
-        else:
-            self.__logger.warning(f'Property {property_name} does not exist')
-            return False
-        property_value = stValue.nCurValue
-        return property_value
+        if property_name in self._FLOAT_PROPERTIES:
+            node = self._FLOAT_PROPERTIES[property_name]
+            value = MVCC_FLOATVALUE()
+            ret = self.camera.MV_CC_GetFloatValue(node, value)
+            if ret != 0:
+                self.__logger.warning(f"Reading {node} failed (0x{ret & 0xffffffff:x})")
+                return False
+            # ExposureTime is microseconds in the SDK, milliseconds everywhere
+            # else in ImSwitch - set_exposure_time multiplies by 1000, so the
+            # readback has to divide again.
+            return value.fCurValue / 1000 if property_name == "exposure" else value.fCurValue
+
+        if property_name in self._INT_PROPERTIES:
+            node = self._INT_PROPERTIES[property_name]
+            value = MVCC_INTVALUE()
+            ret = self.camera.MV_CC_GetIntValue(node, value)
+            if ret != 0:
+                self.__logger.warning(f"Reading {node} failed (0x{ret & 0xffffffff:x})")
+                return False
+            return value.nCurValue
+
+        if property_name in self._ENUM_PROPERTIES:
+            node = self._ENUM_PROPERTIES[property_name]
+            value = MVCC_ENUMVALUE()
+            ret = self.camera.MV_CC_GetEnumValue(node, value)
+            if ret != 0:
+                self.__logger.warning(f"Reading {node} failed (0x{ret & 0xffffffff:x})")
+                return False
+            return value.nCurValue
+
+        if property_name == "roi_size":
+            return self.roi_size
+        if property_name == "frame_Rate":
+            return self.frame_rate
+        if property_name == "trigger_source":
+            return self.trigger_source
+
+        self.__logger.warning(f'Property {property_name} does not exist')
+        return False
 
     def getDeviceModelName(self) -> str:
         """Return the Hikvision device model string (e.g. 'MV-CE050-30GM')."""
