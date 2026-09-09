@@ -21,12 +21,12 @@
   },
   "availableWidgets": [
     "Settings",
-    "View", 
+    "View",
     "Image"
   ],
   "_disabled_devices": {
     "ESP32": {
-      "managerName": "ESP32Manager", 
+      "managerName": "ESP32Manager",
       "managerProperties": {
         "host_": "192.168.43.129",
         "serialport": "COM4",
