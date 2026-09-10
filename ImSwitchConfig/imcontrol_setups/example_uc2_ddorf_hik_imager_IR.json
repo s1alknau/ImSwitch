@@ -8,7 +8,7 @@
         "cameraListIndex": 0,
         "cameraEffPixelsize": 3.45,
         "hikcam": {
-          "exposure": 5.0,
+          "exposure": 20.0,
           "gain": 0.0,
           "blacklevel": 0,
           "trigger_source": "Continuous",
